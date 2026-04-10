@@ -1,0 +1,100 @@
+# configs/base.yaml
+
+# =========================
+
+# Environment
+
+# =========================
+
+env_id: "MiniGrid-FourRooms-v0"
+n_envs: 16
+
+# =========================
+
+# Training
+
+# =========================
+
+total_steps: 20000000
+n_steps: 128
+batch_size: 256
+n_epochs: 4
+
+# =========================
+
+# PPO Hyperparameters
+
+# =========================
+
+gamma: 0.999
+gamma_int: 0.99
+gae_lambda: 0.95
+clip_eps: 0.2
+lr: 3e-4
+entropy_coef: 0.01
+value_coef: 0.5
+
+# =========================
+
+# Model
+
+# =========================
+
+feature_dim: 256
+action_dim: 7
+
+# =========================
+
+# RND
+
+# =========================
+
+use_rnd: false
+rnd_dim: 512
+rnd_update_proportion: 0.25
+
+# =========================
+
+# CLIP / Semantic
+
+# =========================
+
+use_clip: false
+clip_model: "ViT-B-32"
+semantic_k: 5
+buffer_size: 50000
+
+# =========================
+
+# Reward Normalisation
+
+# =========================
+
+norm_tau: 0.001
+norm_clip: 5.0
+
+# =========================
+
+# Adaptive Weights
+
+# =========================
+
+adaptive: false
+alpha: 1.0
+beta: 0.5
+
+alpha_max: 1.0
+alpha_min: 0.05
+beta_max: 0.5
+beta_min: 0.01
+tau_rho: 0.01
+
+# =========================
+
+# Logging
+
+# =========================
+
+wandb: true
+project_name: "scde"
+run_name: "debug_run"

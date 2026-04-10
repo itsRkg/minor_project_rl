@@ -1,0 +1,8 @@
+defaults:
+ - base
+
+use_rnd: false
+use_clip: false
+adaptive: false
+
+run_name: "B1_PPO_only"

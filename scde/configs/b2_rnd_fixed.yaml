@@ -1,0 +1,10 @@
+defaults:
+ - base
+
+use_rnd: true
+use_clip: false
+adaptive: false
+
+alpha: 1.0
+
+run_name: "B2_RND_fixed"

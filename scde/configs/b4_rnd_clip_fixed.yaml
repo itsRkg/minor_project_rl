@@ -1,0 +1,11 @@
+defaults:
+  - base
+
+use_rnd: true
+use_clip: true
+adaptive: false
+
+alpha: 1.0
+beta: 0.5
+
+run_name: "B4_RND_CLIP_fixed"

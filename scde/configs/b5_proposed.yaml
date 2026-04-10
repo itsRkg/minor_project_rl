@@ -1,0 +1,8 @@
+defaults:
+  - base
+
+use_rnd: true
+use_clip: true
+adaptive: true
+
+run_name: "B5_SCDE"

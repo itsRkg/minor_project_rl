@@ -1,0 +1,10 @@
+defaults:
+ - base
+
+use_rnd: false
+use_clip: true
+adaptive: false
+
+beta: 0.5
+
+run_name: "B3_CLIP_only"
