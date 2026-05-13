@@ -12,9 +12,9 @@ class ImageOnlyWrapper(gym.ObservationWrapper):
         super().__init__(env) 
 
         # Extract image space from dict 
-        self.observation_space = env.observation_space["image"]
+        self.observation_space = env.observation_space["image"] # type: ignore
 
-    def observation(self, obs):
+    def observation(self, obs): # type: ignore
         return obs["image"]
 
 class ResizeWrapper(gym.ObservationWrapper):
@@ -35,8 +35,10 @@ class ResizeWrapper(gym.ObservationWrapper):
             dtype=np.uint8
         )
 
-    def observation(self, obs): 
+    def observation(self, obs):  # type: ignore
         obs = cv2.resize(obs, self.size, interpolation=cv2.INTER_AREA)
+        # Ensure contiguous memory layout
+        obs = np.ascontiguousarray(obs)
         return obs
 
 def make_env(env_id: str, seed: int):
