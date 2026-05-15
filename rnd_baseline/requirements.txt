@@ -1,0 +1,48 @@
+# rnd_baseline — pinned dependency list
+# Generated: 2026-05-15  (see REBUILD_PLAN.md §2.1 for rationale on each pin)
+#
+# INSTALL ORDER (Windows + RTX 4060, CUDA 12.x):
+#
+#   Step 1 — PyTorch with CUDA 12.1 (must come first):
+#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#
+#   Step 2 — this file:
+#     pip install -r requirements.txt
+#
+#   Step 3 — Atari ROMs (run once, requires Internet):
+#     AutoROM --accept-license
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Atari env: pin to 0.21 to keep jcwleo's 4-tuple step() / single-value reset()
+# API.  gym>=0.26 broke both; migration is a separate future task.
+gym==0.21.0
+gym[atari,accept-rom-license]==0.21.0   # pulls ale-py + ROM licence header
+
+# AutoROM installs the actual Atari ROMs
+AutoROM[accept-rom-license]
+
+# Computer vision (only cv2.resize / cvtColor used — version-insensitive)
+opencv-python
+
+# TensorBoard — native torch.utils.tensorboard (P6: drop tensorboardX)
+tensorboard>=2.14
+
+# NumPy (any >=1.24; jcwleo doesn't use deprecated np.bool / np.int aliases)
+numpy>=1.24
+
+# Data / plotting (used in notebooks)
+matplotlib
+pandas
+
+# Jupyter (for the experiment notebooks)
+jupyter
+ipykernel
+ipywidgets
+
+# MiniGrid (Session 2+).  Some versions require gymnasium; pin to one that
+# still accepts classic gym==0.21 wrappers.
+minigrid>=2.3
+
+# Pillow (used in envs.py Image.fromarray / convert('L'))
+Pillow

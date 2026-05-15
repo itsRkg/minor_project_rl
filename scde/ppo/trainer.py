@@ -1,9 +1,11 @@
-import random
-import numpy as np
 import torch
+import numpy as np
 
 from envs.vec_env import make_vec_env
+
 from models.actor_critic import ActorCritic
+from models.rnd import RNDModule
+
 from ppo.rollout_buffer import RolloutBuffer
 from ppo.updater import PPOUpdater
 
@@ -13,69 +15,87 @@ class Trainer:
 
         self.cfg = cfg
 
-        # =========================================================
-        # Reproducibility
-        # =========================================================
-        random.seed(cfg.seed)
-
-        np.random.seed(cfg.seed)
-
-        torch.manual_seed(cfg.seed)
-
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(cfg.seed)
-
-        # =========================================================
-        # Device
-        # =========================================================
         self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
+            "cuda"
+            if torch.cuda.is_available()
+            else "cpu"
         )
 
-        # =========================================================
-        # Environment
-        # =========================================================
+        # =====================================================
+        # ENVIRONMENT
+        # =====================================================
+
         self.envs = make_vec_env(
             cfg.env_id,
             cfg.n_envs,
-            seed=cfg.seed,
         )
 
-        # =========================================================
-        # Model
-        # =========================================================
+        # =====================================================
+        # MODEL
+        # =====================================================
+
         self.model = ActorCritic(
             feature_dim=cfg.feature_dim,
             action_dim=cfg.action_dim,
         ).to(self.device)
 
-        # =========================================================
-        # Optimizer
-        # =========================================================
+        # =====================================================
+        # OPTIONAL RND MODULE
+        # =====================================================
+
+        self.rnd = None
+
+        if cfg.use_rnd:
+
+            self.rnd = RNDModule(
+                feature_dim=cfg.feature_dim,
+                rnd_dim=cfg.rnd_dim,
+            ).to(self.device)
+
+        # =====================================================
+        # OPTIMIZER
+        # =====================================================
+
+        params = list(
+            self.model.parameters()
+        )
+
+        # Only predictor is trainable
+        if self.rnd is not None:
+
+            params += list(
+                self.rnd.predictor.parameters()
+            )
+
         self.optimizer = torch.optim.Adam(
-            self.model.parameters(),
+            params,
             lr=cfg.lr,
         )
 
-        # =========================================================
-        # Rollout Buffer
-        # =========================================================
+        # =====================================================
+        # BUFFER
+        # =====================================================
+
         self.buffer = RolloutBuffer(
             n_steps=cfg.n_steps,
             n_envs=cfg.n_envs,
             device=self.device, # type: ignore
         )
 
-        # =========================================================
-        # PPO Updater
-        # =========================================================
+        # =====================================================
+        # PPO UPDATER
+        # =====================================================
+
         self.updater = PPOUpdater(
             model=self.model,
             optimizer=self.optimizer,
+            rnd=self.rnd,
             clip_eps=cfg.clip_eps,
             value_coef=cfg.value_coef,
             entropy_coef=cfg.entropy_coef,
-            max_grad_norm=cfg.max_grad_norm,
+            rnd_update_proportion=(
+                cfg.rnd_update_proportion
+            ),
         )
 
     def train(self):
@@ -88,15 +108,40 @@ class Trainer:
             device=self.device,
         )
 
+        # =====================================================
+        # TRACKING VARIABLES
+        # =====================================================
+
         total_steps = 0
+
+        # Running episode trackers
+        episode_returns = np.zeros(
+            self.cfg.n_envs,
+            dtype=np.float32,
+        )
+
+        episode_lengths = np.zeros(
+            self.cfg.n_envs,
+            dtype=np.int32,
+        )
+
+        # Historical metrics
+        all_returns = []
+        all_lengths = []
+        all_successes = []
+
+        # =====================================================
+        # TRAINING LOOP
+        # =====================================================
 
         while total_steps < self.cfg.total_steps:
 
             self.buffer.reset()
 
-            # =====================================================
-            # Rollout Collection
-            # =====================================================
+            # =================================================
+            # ROLLOUT COLLECTION
+            # =================================================
+
             for _ in range(self.cfg.n_steps):
 
                 with torch.no_grad():
@@ -106,8 +151,26 @@ class Trainer:
                         log_prob,
                         v_ext,
                         v_int,
-                        _,
+                        h,
                     ) = self.model.get_action(obs)
+
+                    # =========================================
+                    # OPTIONAL RND REWARD
+                    # =========================================
+
+                    if self.rnd is not None:
+
+                        r_int = (
+                            self.rnd
+                            .intrinsic_reward(h)
+                        )
+
+                    else:
+
+                        r_int = torch.zeros(
+                            self.cfg.n_envs,
+                            device=self.device,
+                        )
 
                 action_np = action.cpu().numpy()
 
@@ -124,9 +187,48 @@ class Trainer:
                     truncated,
                 )
 
-                # ================================================
-                # Convert to tensors
-                # ================================================
+                # =================================================
+                # METRICS
+                # =================================================
+
+                episode_returns += reward
+                episode_lengths += 1
+
+                for i in range(self.cfg.n_envs):
+
+                    if done[i]:
+
+                        # =========================================
+                        # STORE EPISODE METRICS
+                        # =========================================
+
+                        ep_return = episode_returns[i]
+                        ep_length = episode_lengths[i]
+
+                        all_returns.append(ep_return)
+                        all_lengths.append(ep_length)
+
+                        # =========================================
+                        # SPARSE REWARD SUCCESS METRIC
+                        # =========================================
+
+                        success = (
+                            1 if ep_return > 0 else 0
+                        )
+
+                        all_successes.append(success)
+
+                        # =========================================
+                        # RESET TRACKERS
+                        # =========================================
+
+                        episode_returns[i] = 0
+                        episode_lengths[i] = 0
+
+                # =================================================
+                # CONVERT TO TENSORS
+                # =================================================
+
                 next_obs = torch.tensor(
                     next_obs,
                     dtype=torch.uint8,
@@ -139,20 +241,16 @@ class Trainer:
                     device=self.device,
                 )
 
-                done = torch.tensor(
+                done_t = torch.tensor(
                     done,
                     dtype=torch.bool,
                     device=self.device,
                 )
 
-                # ================================================
-                # B1 PPO-only intrinsic reward
-                # ================================================
-                r_int = torch.zeros_like(reward)
+                # =================================================
+                # STORE TRANSITION
+                # =================================================
 
-                # ================================================
-                # Store transition
-                # ================================================
                 self.buffer.add(
                     obs,
                     action,
@@ -161,7 +259,8 @@ class Trainer:
                     r_int,
                     v_ext,
                     v_int,
-                    done,
+                    h,
+                    done_t,
                 )
 
                 obs = next_obs
@@ -169,8 +268,9 @@ class Trainer:
                 total_steps += self.cfg.n_envs
 
             # =====================================================
-            # Bootstrap final values
+            # BOOTSTRAP VALUES
             # =====================================================
+
             with torch.no_grad():
 
                 (
@@ -181,29 +281,52 @@ class Trainer:
                 ) = self.model.forward(obs)
 
             # =====================================================
-            # Compute GAE
+            # COMPUTE RETURNS + ADVANTAGES
             # =====================================================
+
             self.buffer.compute_returns_and_advantages(
-                last_v_ext=last_v_ext,
-                last_v_int=last_v_int,
-                gamma_ext=self.cfg.gamma,
+                last_v_ext,
+                last_v_int,
+                gamma=self.cfg.gamma,
                 gamma_int=self.cfg.gamma_int,
                 lam=self.cfg.gae_lambda,
             )
 
             # =====================================================
-            # PPO Update
+            # PPO UPDATE
             # =====================================================
+
             loss = self.updater.update(
-                buffer=self.buffer,
+                self.buffer,
                 batch_size=self.cfg.batch_size,
                 n_epochs=self.cfg.n_epochs,
             )
 
             # =====================================================
-            # Logging
+            # LOGGING
             # =====================================================
-            print(
-                f"Steps: {total_steps} | "
-                f"Loss: {loss:.4f}"
-            )
+
+            if len(all_returns) > 0:
+
+                mean_return = np.mean(
+                    all_returns[-10:]
+                )
+
+                mean_ep_len = np.mean(
+                    all_lengths[-10:]
+                )
+
+                # Last 100 completed episodes
+                success_rate = np.mean(
+                    all_successes[-100:]
+                )
+
+                print(
+                    f"Steps: {total_steps} | "
+                    f"Loss: {loss:.3f} | "
+                    f"Mean Return: {mean_return:.2f} | "
+                    f"Mean Ep Len: {mean_ep_len:.1f} | "
+                    f"Success Rate: {success_rate:.2f}"
+                )
+
+        print("Training completed.")

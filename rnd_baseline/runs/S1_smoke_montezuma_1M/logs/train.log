@@ -1,0 +1,21 @@
+[2026-05-15 04:13:33] run=S1_smoke_montezuma_1M  config=DEFAULT  total_frames=1000000  chunk=500000  seed=42  config_hash=eb75a940fa43cc6a6d12014a1f49bfbae9f9d182
+[2026-05-15 04:13:51] Starting fresh — obs-RMS warmup (50 rollouts × 128 steps × 16 envs)…
+[2026-05-15 04:21:58] Obs-RMS warmup done.
+[2026-05-15 04:21:58] Spawning 16 env workers for MontezumaRevengeNoFrameskip-v4…
+[2026-05-15 04:24:12] Workers started.
+[2026-05-15 04:25:25] --- chunk start: step=0  target=500,000 ---
+[2026-05-15 04:37:54] step=   102,400  fps=   137  ext_ret=   0.00  int_rew=17.38347  ploss= 0.0081  ent=2.7674  gnorm=0.1450
+[2026-05-15 04:48:43] step=   204,800  fps=   146  ext_ret=   0.00  int_rew=11.85904  ploss= 0.0033  ent=2.8463  gnorm=0.1206
+[2026-05-15 04:57:22] step=   307,200  fps=   160  ext_ret=   0.00  int_rew=10.65860  ploss=-0.0089  ent=2.8519  gnorm=0.0880
+[2026-05-15 05:03:25] step=   409,600  fps=   180  ext_ret=   0.00  int_rew=10.96709  ploss=-0.0067  ent=2.7365  gnorm=0.1793
+[2026-05-15 05:09:14] [eval] step=501,760  mean_return=0.00±0.00  mean_ep_len=2496  video → c:\Users\rishe\minor_project_rl\rnd_baseline\runs\S1_smoke_montezuma_1M\videos\eval_step_00000501760
+[2026-05-15 05:09:14] --- chunk done: step=501,760 ---
+[2026-05-15 05:09:14] --- chunk start: step=501,760  target=1,001,760 ---
+[2026-05-15 05:09:45] step=   512,000  fps=   331  ext_ret=   0.00  int_rew=11.07193  ploss=-0.0108  ent=2.7346  gnorm=0.1849
+[2026-05-15 05:14:53] step=   614,400  fps=   332  ext_ret=   0.00  int_rew= 9.34823  ploss=-0.0020  ent=2.5803  gnorm=0.0882
+[2026-05-15 05:21:25] step=   716,800  fps=   294  ext_ret=   0.00  int_rew= 7.96522  ploss= 0.0000  ent=2.5978  gnorm=0.0960
+[2026-05-15 05:30:14] step=   819,200  fps=   252  ext_ret=   0.00  int_rew= 8.49794  ploss= 0.0075  ent=2.6899  gnorm=0.2237
+[2026-05-15 05:36:48] step=   921,600  fps=   254  ext_ret=   0.00  int_rew= 7.22075  ploss=-0.0010  ent=2.6832  gnorm=0.0636
+[2026-05-15 05:42:38] [eval] step=1,003,520  mean_return=0.00±0.00  mean_ep_len=4426  video → c:\Users\rishe\minor_project_rl\rnd_baseline\runs\S1_smoke_montezuma_1M\videos\eval_step_00001003520
+[2026-05-15 05:42:38] --- chunk done: step=1,003,520 ---
+[2026-05-15 09:03:55] [eval] step=1,003,520  mean_return=0.00±0.00  mean_ep_len=4501  video → c:\Users\rishe\minor_project_rl\rnd_baseline\runs\S1_smoke_montezuma_1M\videos\eval_step_00001003520
